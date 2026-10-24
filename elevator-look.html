@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOOK — Elevator Algorithm Simulator</title>
+  <style>
+    :root {
+      --page: #f2f4ef;
+      --paper: #ffffff;
+      --ink: #162724;
+      --muted: #6d7d78;
+      --line: #dfe5df;
+      --green: #157a63;
+      --green-dark: #0f5f4e;
+      --mint: #bcefe0;
+      --lime: #d9f99d;
+      --building: #132522;
+      --building-2: #1a302c;
+      --building-line: #33504a;
+      --amber: #b86b16;
+      --red: #a4453c;
+      --shadow: 0 14px 40px rgba(26, 48, 42, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(188, 239, 224, 0.35), transparent 27rem),
+        var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, select { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .app {
+      width: min(1220px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 22px 0 26px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 13px; }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 45px;
+      height: 45px;
+      flex: 0 0 auto;
+      border-radius: 13px;
+      background: var(--ink);
+      color: var(--lime);
+      box-shadow: 0 7px 18px rgba(22, 39, 36, 0.16);
+    }
+
+    .eyebrow {
+      margin: 0 0 3px;
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1;
+      letter-spacing: -0.045em;
+    }
+
+    h1 span { color: var(--green); }
+
+    .top-note {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: right;
+    }
+
+    .top-note svg { flex: 0 0 auto; color: var(--green); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 344px;
+      align-items: stretch;
+      gap: 18px;
+    }
+
+    .building-card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 23px;
+      background: var(--building);
+      color: #eff9f5;
+      box-shadow: 0 20px 48px rgba(18, 40, 34, 0.16);
+    }
+
+    .building-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 45px;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .building-head .eyebrow { color: #8fbeb0; }
+
+    .building-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: -0.025em;
+    }
+
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 29px;
+      padding: 0 11px;
+      border: 1px solid #3a5650;
+      border-radius: 999px;
+      color: #bed0cb;
+      background: rgba(255, 255, 255, 0.04);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .mode-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #879b95;
+    }
+
+    .mode-pill.running .mode-dot { background: var(--lime); box-shadow: 0 0 0 4px rgba(217, 249, 157, 0.1); }
+    .mode-pill.paused .mode-dot { background: #ffbf69; }
+    .mode-pill.running { color: var(--lime); border-color: #4d6d57; }
+    .mode-pill.paused { color: #ffcf90; border-color: #6f5c40; }
+
+    .building {
+      position: relative;
+      height: 440px;
+      overflow: hidden;
+      border: 1px solid #3a514c;
+      border-radius: 16px;
+      background: var(--building-2);
+      isolation: isolate;
+    }
+
+    .floor {
+      position: relative;
+      height: 25%;
+      overflow: hidden;
+      border-bottom: 1px solid var(--building-line);
+      background: linear-gradient(90deg, rgba(255,255,255,0.025), transparent 52%);
+    }
+
+    .floor:last-of-type { border-bottom: 0; }
+
+    .floor::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 4px;
+      background: rgba(4, 14, 12, 0.25);
+      pointer-events: none;
+    }
+
+    .floor-info {
+      position: absolute;
+      z-index: 2;
+      top: 15px;
+      left: 17px;
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+    }
+
+    .floor-number {
+      color: #eaf6f1;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 25px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: -0.06em;
+    }
+
+    .floor-copy { padding-top: 1px; }
+    .floor-name { color: #c4d8d1; font-size: 11px; font-weight: 650; }
+    .floor-sub { margin-top: 3px; color: #6f9187; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+    .floor.target .floor-number { color: var(--lime); }
+    .floor.target { background: linear-gradient(90deg, rgba(217,249,157,0.065), transparent 65%); }
+
+    .target-label {
+      position: absolute;
+      z-index: 3;
+      top: 13px;
+      left: 106px;
+      display: none;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: rgba(217, 249, 157, 0.1);
+      color: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .floor.target .target-label { display: block; }
+
+    .room-art {
+      position: absolute;
+      left: 34%;
+      bottom: 16px;
+      width: 120px;
+      height: 45px;
+      opacity: 0.58;
+    }
+
+    .room-art .desk {
+      position: absolute;
+      left: 18px;
+      bottom: 9px;
+      width: 64px;
+      height: 5px;
+      border-radius: 2px;
+      background: #547169;
+    }
+
+    .room-art .desk::before,
+    .room-art .desk::after {
+      content: "";
+      position: absolute;
+      top: 5px;
+      width: 3px;
+      height: 20px;
+      background: #547169;
+    }
+
+    .room-art .desk::before { left: 6px; }
+    .room-art .desk::after { right: 6px; }
+
+    .room-art .screen {
+      position: absolute;
+      left: 34px;
+      bottom: 15px;
+      width: 27px;
+      height: 18px;
+      border: 2px solid #65877c;
+      border-radius: 3px;
+    }
+
+    .room-art .plant {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 16px;
+      height: 17px;
+      border-radius: 2px 2px 7px 7px;
+      background: #4c6b62;
+    }
+
+    .room-art .plant::before,
+    .room-art .plant::after {
+      content: "";
+      position: absolute;
+      bottom: 13px;
+      width: 12px;
+      height: 23px;
+      border-radius: 100% 0 100% 0;
+      background: #618679;
+      transform-origin: bottom right;
+    }
+
+    .room-art .plant::before { left: -3px; transform: rotate(-24deg); }
+    .room-art .plant::after { right: -2px; transform: scaleX(-1) rotate(-24deg); }
+
+    .call-signs {
+      position: absolute;
+      z-index: 3;
+      top: 14px;
+      right: calc(16% + 119px);
+      display: flex;
+      gap: 4px;
+    }
+
+    .call-sign {
+      display: grid;
+      place-items: center;
+      width: 19px;
+      height: 19px;
+      border: 1px solid #3b5851;
+      border-radius: 5px;
+      color: #58766d;
+      background: #172b27;
+      font-size: 10px;
+      transition: none;
+    }
+
+    .call-sign.active {
+      border-color: #9cba66;
+      color: var(--lime);
+      background: rgba(217,249,157,0.08);
+    }
+
+    .shaft {
+      position: absolute;
+      z-index: 3;
+      top: 0;
+      right: 16%;
+      bottom: 0;
+      width: 110px;
+      border-left: 1px solid #38534c;
+      border-right: 1px solid #38534c;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.18), transparent 17%, transparent 83%, rgba(0,0,0,0.18)),
+        #10201d;
+      box-shadow: 0 0 22px rgba(0,0,0,0.15);
+    }
+
+    .shaft::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background: #263f39;
+    }
+
+    .shaft-ticks {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 1px), #355049 calc(25% - 1px), #355049 25%);
+      opacity: 0.8;
+    }
+
+    .elevator {
+      position: absolute;
+      z-index: 5;
+      top: 0;
+      left: 50%;
+      width: 88px;
+      height: 88px;
+      will-change: transform;
+    }
+
+    .car-top {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 20px;
+      border: 2px solid #b8d2ca;
+      border-bottom: 0;
+      border-radius: 7px 7px 0 0;
+      background: #d9e8e3;
+      color: #19362f;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .car-top::after {
+      content: "";
+      position: absolute;
+      right: 7px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    #car-direction { color: var(--green); font-size: 12px; line-height: 1; }
+
+    .car-shell {
+      position: relative;
+      height: 68px;
+      overflow: hidden;
+      border: 2px solid #b8d2ca;
+      border-radius: 0 0 5px 5px;
+      background: #79948b;
+      box-shadow: 0 7px 14px rgba(0,0,0,0.25);
+    }
+
+    .car-interior {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, #294a42, #587a6e 48%, #294a42);
+    }
+
+    .car-interior::before {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 19px;
+      right: 19px;
+      height: 3px;
+      border-radius: 4px;
+      background: #e8f8ef;
+      box-shadow: 0 0 10px rgba(232,248,239,0.65);
+    }
+
+    .car-interior::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 7px;
+      background: #526f66;
+    }
+
+    .car-occupants { position: absolute; z-index: 1; inset: 10px 4px 5px; }
+
+    .door {
+      position: absolute;
+      z-index: 3;
+      top: 0;
+      bottom: 0;
+      width: 50.5%;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.22), transparent 25%, rgba(0,0,0,0.05)),
+        #c7d8d2;
+      will-change: transform;
+    }
+
+    .door-left { left: 0; border-right: 1px solid #6d8980; }
+    .door-right { right: 0; border-left: 1px solid #eef7f3; }
+
+    .door::after {
+      content: "";
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      width: 1px;
+      background: rgba(76, 105, 96, 0.24);
+    }
+
+    .door-left::after { left: 8px; }
+    .door-right::after { right: 8px; }
+
+    .people-layer {
+      position: absolute;
+      z-index: 6;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .person {
+      --shirt: #e7a95f;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 16px;
+      height: 32px;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    .person .head {
+      position: absolute;
+      z-index: 2;
+      top: 0;
+      left: 5px;
+      width: 7px;
+      height: 7px;
+      border: 1px solid rgba(25,38,34,0.28);
+      border-radius: 50%;
+      background: #f0c6a2;
+    }
+
+    .person .torso {
+      position: absolute;
+      z-index: 1;
+      top: 7px;
+      left: 3px;
+      width: 11px;
+      height: 14px;
+      border-radius: 5px 5px 3px 3px;
+      background: var(--shirt);
+      box-shadow: inset -2px 0 rgba(0,0,0,0.1);
+    }
+
+    .person .leg {
+      position: absolute;
+      top: 19px;
+      width: 4px;
+      height: 11px;
+      border-radius: 0 0 2px 2px;
+      background: #233b36;
+      transform-origin: 50% 0;
+    }
+
+    .person .leg.one { left: 4px; }
+    .person .leg.two { right: 3px; }
+
+    .person .dest-label {
+      position: absolute;
+      left: 50%;
+      bottom: 35px;
+      min-width: 20px;
+      padding: 2px 4px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 5px;
+      background: #0c1b18;
+      color: #e6f4ef;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    .person.onboard .dest-label,
+    .person.done .dest-label { display: none; }
+
+    .person.done { opacity: 0.62; }
+    .person.entering .dest-label,
+    .person.exiting .dest-label { display: block; color: var(--lime); border-color: #597266; }
+    .person.onboard { width: 14px; transform-origin: bottom center; }
+    .person.onboard .head { left: 4px; }
+    .person.onboard .torso { left: 2px; }
+
+    .building-foot {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+      padding: 12px 3px 0;
+    }
+
+    .dispatch-status { min-width: 0; }
+    .status-main { overflow: hidden; color: #e2f0eb; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .status-sub { margin-top: 4px; color: #8aa9a0; font-size: 11px; }
+
+    .car-stats { display: flex; gap: 6px; }
+    .stat {
+      min-width: 56px;
+      padding: 6px 8px;
+      border: 1px solid #314a44;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.025);
+      text-align: center;
+    }
+
+    .stat-value { color: #eff9f5; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 700; }
+    .stat-label { margin-top: 1px; color: #729087; font-size: 8px; letter-spacing: 0.09em; text-transform: uppercase; }
+
+    .sidebar { display: flex; min-width: 0; flex-direction: column; gap: 13px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .controls { padding: 17px; }
+
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+    .panel-title { margin: 0; font-size: 13px; font-weight: 750; letter-spacing: -0.01em; }
+    .panel-kicker { color: #8a9994; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; text-transform: uppercase; }
+
+    .request-fields { display: grid; grid-template-columns: 1fr 26px 1fr; align-items: end; gap: 8px; }
+    .field label { display: block; margin: 0 0 6px 2px; color: var(--muted); font-size: 10px; font-weight: 650; }
+
+    select {
+      width: 100%;
+      height: 40px;
+      padding: 0 28px 0 11px;
+      border: 1px solid #d8e0da;
+      border-radius: 9px;
+      outline: none;
+      appearance: none;
+      background:
+        linear-gradient(45deg, transparent 50%, #6f817a 50%) calc(100% - 14px) 17px / 5px 5px no-repeat,
+        linear-gradient(135deg, #6f817a 50%, transparent 50%) calc(100% - 9px) 17px / 5px 5px no-repeat,
+        #fafcfa;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    select:focus-visible { border-color: var(--green); box-shadow: 0 0 0 3px rgba(21,122,99,0.12); }
+    .route-arrow { align-self: center; padding-top: 15px; color: #91a09a; text-align: center; }
+
+    .request-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 39px;
+      padding: 0 12px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      outline: none;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 80ms ease;
+    }
+
+    .btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:focus-visible { box-shadow: 0 0 0 3px rgba(21,122,99,0.16); }
+    .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+    .btn svg { width: 13px; height: 13px; flex: 0 0 auto; }
+
+    .btn-primary { background: var(--green); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-secondary { border-color: #d9e1db; background: #f8faf7; color: #365149; }
+    .btn-secondary:hover:not(:disabled) { border-color: #bfcfc5; background: #f0f5f0; }
+
+    .form-message {
+      min-height: 15px;
+      margin: 8px 1px 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .form-message.error { color: var(--red); }
+
+    .transport { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding-top: 12px; border-top: 1px solid #edf0ec; }
+    .btn-run { background: var(--ink); color: white; }
+    .btn-run:hover:not(:disabled) { background: #29413c; }
+    .btn-stop { border-color: #ead9d5; background: #fff9f7; color: var(--red); }
+    .btn-pause { border-color: #ecdfca; background: #fffaf0; color: #986020; }
+    .btn-resume { border-color: #cfe4d8; background: #f1faf4; color: var(--green-dark); }
+
+    .queue-panel { display: flex; min-height: 208px; flex: 1; flex-direction: column; padding: 16px 17px 12px; }
+    .queue-panel .panel-heading { margin-bottom: 8px; }
+    .queue-count { min-width: 23px; padding: 3px 6px; border-radius: 6px; background: #edf4ef; color: var(--green); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; font-weight: 800; text-align: center; }
+
+    .request-list { display: flex; max-height: 165px; min-height: 70px; flex-direction: column; gap: 5px; overflow: auto; scrollbar-width: thin; }
+
+    .empty-queue {
+      display: grid;
+      min-height: 77px;
+      place-items: center;
+      border: 1px dashed #dce4de;
+      border-radius: 10px;
+      color: #8b9a95;
+      font-size: 10px;
+      line-height: 1.55;
+      text-align: center;
+    }
+
+    .request-row {
+      display: grid;
+      grid-template-columns: 27px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 4px 8px 4px 5px;
+      border: 1px solid #edf0ec;
+      border-radius: 8px;
+      background: #fbfcfa;
+    }
+
+    .request-id {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 25px;
+      border-radius: 6px;
+      background: var(--person-color, #e7a95f);
+      color: rgba(20,35,31,0.78);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 9px;
+      font-weight: 850;
+    }
+
+    .request-route { color: #2c413b; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; font-weight: 750; }
+    .request-route small { margin-left: 5px; color: #82918b; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 9px; font-weight: 600; }
+    .request-state { color: #6c7e77; font-size: 10px; }
+    .request-row.active { border-color: #a9d7c6; background: #f0f8f3; }
+    .request-row.active .request-state { color: var(--green); font-weight: 800; }
+
+    .event-strip { margin-top: 9px; padding-top: 9px; border-top: 1px solid #edf0ec; }
+    .event-title { margin-bottom: 5px; color: #84958e; font-size: 9px; font-weight: 750; letter-spacing: 0.1em; text-transform: uppercase; }
+    .event-line { display: flex; gap: 7px; overflow: hidden; color: #5f736b; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; line-height: 1.7; white-space: nowrap; }
+    .event-time { flex: 0 0 auto; color: #a1aca8; }
+    .event-text { overflow: hidden; text-overflow: ellipsis; }
+
+    .look-note { display: flex; gap: 11px; padding: 13px 15px; border-color: #cfdfd3; background: #eaf3eb; box-shadow: none; }
+    .look-icon { display: grid; place-items: center; width: 29px; height: 29px; flex: 0 0 auto; border-radius: 8px; background: #d4e8d7; color: var(--green); }
+    .look-name { color: var(--green-dark); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; font-weight: 850; letter-spacing: 0.09em; }
+    .look-copy { margin-top: 3px; color: #52695d; font-size: 10px; line-height: 1.5; }
+
+    .footer-note { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 3px 0; color: #82918b; font-size: 9px; }
+    .legend { display: flex; align-items: center; gap: 13px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 6px; height: 6px; border-radius: 50%; background: #e7a95f; }
+    .legend-dot.riding { background: var(--green); }
+
+    @media (max-width: 980px) {
+      .workspace { grid-template-columns: minmax(0, 1fr) 310px; }
+      .app { width: min(100% - 26px, 1100px); }
+      .room-art { left: 29%; transform: scale(0.85); transform-origin: bottom left; }
+      .call-signs { right: calc(16% + 115px); }
+    }
+
+    @media (max-width: 790px) {
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+      .look-note { grid-column: 1 / -1; }
+      .queue-panel { min-height: 100%; }
+      .request-list { max-height: 180px; }
+      .top-note { display: none; }
+      .building { height: 424px; }
+    }
+
+    @media (max-width: 540px) {
+      .app { width: calc(100% - 18px); padding-top: 13px; }
+      .topbar { margin-bottom: 13px; }
+      .building-card { padding: 10px; border-radius: 17px; }
+      .building-head { padding: 0 4px; }
+      .building-title { font-size: 15px; }
+      .building { height: 400px; }
+      .shaft { right: 9%; width: 90px; }
+      .elevator { width: 76px; }
+      .call-signs { right: calc(9% + 96px); }
+      .room-art { display: none; }
+      .floor-info { left: 12px; gap: 7px; }
+      .floor-sub { display: none; }
+      .target-label { left: 86px; }
+      .sidebar { display: flex; }
+      .building-foot { grid-template-columns: 1fr; }
+      .car-stats { display: none; }
+      .footer-note { align-items: flex-start; flex-direction: column; }
+      .status-main { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="25" height="25" viewBox="0 0 24 24" fill="none">
+            <rect x="4" y="3" width="16" height="18" rx="3" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M9 10V6m0 0L7 8m2-2 2 2m4 4v4m0 0-2-2m2 2 2-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Dispatch lab · 04 floors</p>
+          <h1>LOOK<span>.</span> Elevator algorithm</h1>
+        </div>
+      </div>
+      <div class="top-note">
+        <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div>One shared simulation clock.<br>Every motion pauses together.</div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="building-card" aria-label="Animated four story building">
+        <div class="building-head">
+          <div>
+            <p class="eyebrow">Live building</p>
+            <h2 class="building-title">Follow the sweep.</h2>
+          </div>
+          <div class="mode-pill stopped" id="mode-pill"><span class="mode-dot"></span><span id="mode-text">Stopped</span></div>
+        </div>
+
+        <div class="building" id="building">
+          <div class="floor" data-floor="4" id="floor-4">
+            <div class="floor-info"><span class="floor-number">04</span><div class="floor-copy"><div class="floor-name">Sky lounge</div><div class="floor-sub">Top level</div></div></div>
+            <span class="target-label">Next stop</span>
+            <div class="room-art" aria-hidden="true"><span class="desk"></span><span class="screen"></span><span class="plant"></span></div>
+            <div class="call-signs"><span class="call-sign" id="call-4-up">↑</span><span class="call-sign" id="call-4-down">↓</span></div>
+          </div>
+          <div class="floor" data-floor="3" id="floor-3">
+            <div class="floor-info"><span class="floor-number">03</span><div class="floor-copy"><div class="floor-name">Design studio</div><div class="floor-sub">Creative space</div></div></div>
+            <span class="target-label">Next stop</span>
+            <div class="room-art" aria-hidden="true"><span class="desk"></span><span class="screen"></span><span class="plant"></span></div>
+            <div class="call-signs"><span class="call-sign" id="call-3-up">↑</span><span class="call-sign" id="call-3-down">↓</span></div>
+          </div>
+          <div class="floor" data-floor="2" id="floor-2">
+            <div class="floor-info"><span class="floor-number">02</span><div class="floor-copy"><div class="floor-name">Workspace</div><div class="floor-sub">Second level</div></div></div>
+            <span class="target-label">Next stop</span>
+            <div class="room-art" aria-hidden="true"><span class="desk"></span><span class="screen"></span><span class="plant"></span></div>
+            <div class="call-signs"><span class="call-sign" id="call-2-up">↑</span><span class="call-sign" id="call-2-down">↓</span></div>
+          </div>
+          <div class="floor" data-floor="1" id="floor-1">
+            <div class="floor-info"><span class="floor-number">01</span><div class="floor-copy"><div class="floor-name">Lobby</div><div class="floor-sub">Ground floor</div></div></div>
+            <span class="target-label">Next stop</span>
+            <div class="room-art" aria-hidden="true"><span class="desk"></span><span class="screen"></span><span class="plant"></span></div>
+            <div class="call-signs"><span class="call-sign" id="call-1-up">↑</span><span class="call-sign" id="call-1-down">↓</span></div>
+          </div>
+
+          <div class="shaft" id="shaft" aria-hidden="true">
+            <div class="shaft-ticks"></div>
+            <div class="elevator" id="elevator">
+              <div class="car-top"><span id="car-direction">•</span><span>F<span id="car-floor">1</span></span></div>
+              <div class="car-shell">
+                <div class="car-interior"></div>
+                <div class="car-occupants" id="car-occupants"></div>
+                <div class="door door-left" id="door-left"></div>
+                <div class="door door-right" id="door-right"></div>
+              </div>
+            </div>
+          </div>
+          <div class="people-layer" id="people-layer"></div>
+        </div>
+
+        <div class="building-foot">
+          <div class="dispatch-status" aria-live="polite">
+            <div class="status-main" id="status-main">Ready to dispatch</div>
+            <div class="status-sub" id="status-sub">Press Run to serve the queued requests.</div>
+          </div>
+          <div class="car-stats">
+            <div class="stat"><div class="stat-value" id="waiting-stat">3</div><div class="stat-label">Waiting</div></div>
+            <div class="stat"><div class="stat-value" id="riding-stat">0</div><div class="stat-label">On board</div></div>
+            <div class="stat"><div class="stat-value" id="trips-stat">0</div><div class="stat-label">Completed</div></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel controls" aria-labelledby="request-heading">
+          <div class="panel-heading"><h2 class="panel-title" id="request-heading">New arrival</h2><span class="panel-kicker">Hall request</span></div>
+          <form id="request-form">
+            <div class="request-fields">
+              <div class="field">
+                <label for="from-floor">From</label>
+                <select id="from-floor" aria-label="From floor">
+                  <option value="1">Floor 1</option><option value="2">Floor 2</option><option value="3">Floor 3</option><option value="4">Floor 4</option>
+                </select>
+              </div>
+              <div class="route-arrow" aria-hidden="true">→</div>
+              <div class="field">
+                <label for="to-floor">To</label>
+                <select id="to-floor" aria-label="To floor">
+                  <option value="1">Floor 1</option><option value="2">Floor 2</option><option value="3">Floor 3</option><option value="4" selected>Floor 4</option>
+                </select>
+              </div>
+            </div>
+            <div class="request-actions">
+              <button class="btn btn-primary" id="add-request" type="submit">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                Add Request
+              </button>
+              <button class="btn btn-secondary" id="random-request" type="button">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/><circle cx="10.5" cy="10.5" r="1" fill="currentColor"/><circle cx="10.5" cy="5.5" r="1" fill="currentColor"/><circle cx="5.5" cy="10.5" r="1" fill="currentColor"/></svg>
+                Random arrival
+              </button>
+            </div>
+          </form>
+          <p class="form-message" id="form-message" aria-live="polite">Add a passenger, then run the simulation.</p>
+          <div class="transport">
+            <button class="btn btn-run" id="run-button" type="button">
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 3 8 5-8 5V3Z" fill="currentColor"/></svg>Run
+            </button>
+            <button class="btn btn-stop" id="stop-button" type="button" disabled>
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor"/></svg>Stop
+            </button>
+            <button class="btn btn-pause" id="pause-button" type="button" disabled>
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 3v10m6-10v10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Pause
+            </button>
+            <button class="btn btn-resume" id="resume-button" type="button" disabled>
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 3 8 5-8 5V3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Resume
+            </button>
+          </div>
+        </section>
+
+        <section class="panel queue-panel" aria-labelledby="queue-heading">
+          <div class="panel-heading"><h2 class="panel-title" id="queue-heading">Request queue</h2><span class="queue-count" id="queue-count">3</span></div>
+          <div class="request-list" id="request-list" role="list" aria-label="Active elevator requests"></div>
+          <div class="event-strip">
+            <div class="event-title">Dispatch activity</div>
+            <div id="event-log"></div>
+          </div>
+        </section>
+
+        <section class="panel look-note" aria-label="How the LOOK algorithm works">
+          <div class="look-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 16V4m0 0L6 8m4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div><div class="look-name">HOW LOOK WORKS</div><div class="look-copy">Keep moving in one direction, serving matching calls and destinations along the way. Reverse only when no work remains ahead.</div></div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="footer-note">
+      <div class="legend"><span class="legend-item"><span class="legend-dot"></span>Color identifies each passenger</span><span class="legend-item"><span class="legend-dot riding"></span>Badge shows destination</span></div>
+      <span>Stop keeps all requests · Pause can freeze the car mid-floor</span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const FLOOR_COUNT = 4;
+      const SPEED = 0.78; // floors per second
+      const OPEN_TIME = 560;
+      const CLOSE_TIME = 560;
+      const WALK_TIME = 680;
+      const WALK_STAGGER = 190;
+      const COLORS = ["#f1bf68", "#90d7c1", "#d9a4dc", "#9db8ed", "#ed9c88", "#b8d979", "#e6b09c", "#8ed4de"];
+      const STATUS_LABELS = { waiting: "Waiting", entering: "Entering", onboard: "On board", exiting: "Leaving" };
+
+      const $ = id => document.getElementById(id);
+      const els = {
+        building: $("building"), shaft: $("shaft"), elevator: $("elevator"),
+        people: $("people-layer"), occupants: $("car-occupants"),
+        doorLeft: $("door-left"), doorRight: $("door-right"),
+        modePill: $("mode-pill"), modeText: $("mode-text"),
+        statusMain: $("status-main"), statusSub: $("status-sub"),
+        carFloor: $("car-floor"), carDirection: $("car-direction"),
+        waitingStat: $("waiting-stat"), ridingStat: $("riding-stat"), tripsStat: $("trips-stat"),
+        form: $("request-form"), from: $("from-floor"), to: $("to-floor"), message: $("form-message"),
+        add: $("add-request"), random: $("random-request"), run: $("run-button"), stop: $("stop-button"),
+        pause: $("pause-button"), resume: $("resume-button"),
+        list: $("request-list"), queueCount: $("queue-count"), eventLog: $("event-log")
+      };
+
+      const state = {
+        mode: "stopped",
+        position: 1,
+        direction: 0,
+        target: null,
+        phase: "idle",
+        phaseTime: 0,
+        door: 0,
+        dwellTime: 0,
+        elapsed: 0,
+        requests: [],
+        exchange: { exits: [], entries: [] },
+        nextId: 1,
+        completed: 0,
+        events: []
+      };
+
+      let geometry = null;
+      let lastQueueSignature = "";
+      let lastEventSignature = "";
+      const personNodes = new Map();
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+      const isActive = request => request.status !== "done";
+      const isWaiting = request => request.status === "waiting";
+      const isRiding = request => request.status === "onboard";
+      const requestDirection = request => Math.sign(request.to - request.from);
+      const floorOf = request => isRiding(request) ? request.to : request.from;
+      const formatTime = ms => {
+        const total = Math.floor(ms / 1000);
+        return String(Math.floor(total / 60)).padStart(2, "0") + ":" + String(total % 60).padStart(2, "0");
+      };
+
+      function logEvent(text) {
+        state.events.unshift({ time: formatTime(state.elapsed), text });
+        state.events = state.events.slice(0, 6);
+        renderEvents();
+      }
+
+      function addRequest(from, to, options = {}) {
+        from = Number(from);
+        to = Number(to);
+        if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || from > FLOOR_COUNT || to < 1 || to > FLOOR_COUNT || from === to) {
+          return null;
+        }
+        const id = state.nextId++;
+        const request = {
+          id, from, to,
+          color: COLORS[(id - 1) % COLORS.length],
+          status: "waiting",
+          walk: 0,
+          walkDelay: 0,
+          originSlot: 0,
+          exitSlot: 0,
+          doneUntil: Infinity
+        };
+        state.requests.push(request);
+        if (!options.silent) {
+          logEvent(`P${id} requested ${from} → ${to}`);
+          setMessage(`Request P${id} added: Floor ${from} → Floor ${to}.`);
+        }
+        render();
+        return request;
+      }
+
+      function setMessage(text, error = false) {
+        els.message.textContent = text;
+        els.message.classList.toggle("error", error);
+      }
+
+      function workRequests() {
+        return state.requests.filter(request => request.status === "waiting" || request.status === "onboard");
+      }
+
+      function primaryStops(direction) {
+        return workRequests().filter(request => {
+          if (isRiding(request)) return true;
+          return requestDirection(request) === direction;
+        });
+      }
+
+      function secondaryStops(direction) {
+        return state.requests.filter(request => isWaiting(request) && requestDirection(request) !== direction);
+      }
+
+      function ahead(request, position, direction) {
+        return direction > 0 ? floorOf(request) > position + 0.0001 : floorOf(request) < position - 0.0001;
+      }
+
+      function nearestAhead(requests, position, direction) {
+        const candidates = requests.filter(request => ahead(request, position, direction));
+        if (!candidates.length) return null;
+        return candidates.reduce((best, request) => {
+          const distance = Math.abs(floorOf(request) - position);
+          const bestDistance = Math.abs(floorOf(best) - position);
+          return distance < bestDistance - 0.0001 || (Math.abs(distance - bestDistance) < 0.0001 && request.id < best.id) ? request : best;
+        });
+      }
+
+      function furthestAhead(requests, position, direction) {
+        const candidates = requests.filter(request => ahead(request, position, direction));
+        if (!candidates.length) return null;
+        return candidates.reduce((best, request) => {
+          const distance = Math.abs(floorOf(request) - position);
+          const bestDistance = Math.abs(floorOf(best) - position);
+          return distance > bestDistance + 0.0001 || (Math.abs(distance - bestDistance) < 0.0001 && request.id < best.id) ? request : best;
+        });
+      }
+
+      function waitingAt(floor) {
+        return state.requests.filter(request => isWaiting(request) && request.from === floor);
+      }
+
+      function hasWorkAhead(position, direction) {
+        return workRequests().some(request => ahead(request, position, direction));
+      }
+
+      function chooseNextTarget() {
+        const work = workRequests();
+        if (!work.length) {
+          state.direction = 0;
+          state.target = null;
+          state.phase = "idle";
+          return;
+        }
+
+        const floor = Math.round(state.position);
+        state.position = floor;
+
+        if (state.direction === 0) {
+          const here = waitingAt(floor);
+          if (here.length) {
+            state.direction = requestDirection(here[0]);
+          } else {
+            const nearest = work.reduce((best, request) => {
+              const distance = Math.abs(floorOf(request) - floor);
+              const bestDistance = Math.abs(floorOf(best) - floor);
+              return distance < bestDistance || (distance === bestDistance && request.id < best.id) ? request : best;
+            });
+            state.direction = Math.sign(floorOf(nearest) - floor);
+          }
+        }
+
+        let direction = state.direction;
+        let candidate = null;
+
+        // A newly-added matching call at the current floor is served before departure.
+        candidate = primaryStops(direction).find(request => isWaiting(request) && request.from === floor) || null;
+        if (candidate) {
+          state.target = floor;
+          return;
+        }
+
+        // Continue the current sweep: matching work is handled nearest-first.
+        candidate = nearestAhead(primaryStops(direction), floor, direction);
+        if (candidate) {
+          state.target = floorOf(candidate);
+          return;
+        }
+
+        // Opposite-direction calls ahead form the turnaround point, not intermediate stops.
+        candidate = furthestAhead(secondaryStops(direction), floor, direction);
+        if (candidate) {
+          state.target = candidate.from;
+          return;
+        }
+
+        // Nothing useful remains ahead. Reverse and take a call on this floor, if any.
+        const here = waitingAt(floor);
+        if (here.length) {
+          state.direction *= -1;
+          state.target = floor;
+          logEvent(`LOOK reverses ${state.direction > 0 ? "up" : "down"} at F${floor}`);
+          return;
+        }
+
+        // Otherwise reverse toward the remaining work behind the car.
+        state.direction *= -1;
+        direction = state.direction;
+        candidate = nearestAhead(primaryStops(direction), floor, direction);
+        if (!candidate) candidate = furthestAhead(secondaryStops(direction), floor, direction);
+        if (candidate) {
+          state.target = floorOf(candidate);
+          logEvent(`LOOK reverses ${direction > 0 ? "up" : "down"} at F${floor}`);
+          return;
+        }
+
+        state.direction = 0;
+        state.target = null;
+      }
+
+      function retargetMovingCar() {
+        if (state.target === null || state.direction === 0) return;
+        const direction = state.direction;
+        let candidate = nearestAhead(primaryStops(direction), state.position, direction);
+        if (candidate) {
+          state.target = floorOf(candidate);
+          return;
+        }
+        candidate = furthestAhead(secondaryStops(direction), state.position, direction);
+        if (candidate) state.target = candidate.from;
+      }
+
+      function prepareStop() {
+        const floor = Math.round(state.position);
+        state.position = floor;
+        const onboardBefore = state.requests.filter(isRiding).sort((a, b) => a.id - b.id);
+        onboardBefore.forEach((request, index) => { request.carSlot = index; });
+        const exits = onboardBefore.filter(request => request.to === floor);
+        let entries = waitingAt(floor).filter(request => requestDirection(request) === state.direction);
+
+        // At a turnaround, change the service direction before opening the doors.
+        if (!entries.length && waitingAt(floor).length && !hasWorkAhead(floor, state.direction)) {
+          if (state.direction === 0) state.direction = requestDirection(waitingAt(floor)[0]);
+          else state.direction *= -1;
+          entries = waitingAt(floor).filter(request => requestDirection(request) === state.direction);
+          logEvent(`LOOK reverses ${state.direction > 0 ? "up" : "down"} at F${floor}`);
+        }
+
+        state.exchange = { exits: exits.map(request => request.id), entries: entries.map(request => request.id) };
+        exits.forEach((request, index) => {
+          request.status = "exiting";
+          request.walk = 0;
+          request.walkDelay = index * WALK_STAGGER;
+          request.exitSlot = index;
+        });
+        entries.forEach((request, index) => {
+          request.status = "entering";
+          request.walk = 0;
+          request.walkDelay = (exits.length + index) * WALK_STAGGER;
+          request.originSlot = index;
+          request.carSlot = onboardBefore.length - exits.length + index;
+        });
+
+        const count = exits.length + entries.length;
+        state.dwellTime = Math.max(1450, 920 + count * 330);
+        state.phaseTime = 0;
+        state.target = floor;
+
+        if (count) {
+          state.phase = "opening";
+          logEvent(`F${floor} doors · ${exits.length} leaving, ${entries.length} boarding`);
+        } else {
+          state.phase = "idle";
+          state.target = null;
+        }
+      }
+
+      function updateWalkers() {
+        const update = request => {
+          const progress = clamp((state.phaseTime - request.walkDelay) / WALK_TIME, 0, 1);
+          request.walk = progress;
+          if (progress >= 1) {
+            if (request.status === "entering") {
+              request.status = "onboard";
+              request.walk = 1;
+            } else if (request.status === "exiting") {
+              request.status = "done";
+              request.doneUntil = state.elapsed + 6500;
+              state.completed += 1;
+            }
+          }
+        };
+        state.requests.forEach(request => {
+          if (request.status === "entering" || request.status === "exiting") update(request);
+        });
+      }
+
+      function step(ms) {
+        state.elapsed += ms;
+        state.phaseTime += ms;
+
+        if (state.phase === "moving") {
+          retargetMovingCar();
+          if (state.target === null) {
+            state.phase = "idle";
+          } else {
+            const distance = state.target - state.position;
+            const travel = SPEED * ms / 1000;
+            if (Math.abs(distance) <= travel + 0.000001) {
+              state.position = state.target;
+              prepareStop();
+            } else {
+              state.position += Math.sign(distance) * travel;
+            }
+          }
+        } else if (state.phase === "opening") {
+          state.door = smooth(state.phaseTime / OPEN_TIME);
+          if (state.phaseTime >= OPEN_TIME) {
+            state.door = 1;
+            state.phase = "dwell";
+            state.phaseTime = 0;
+            updateWalkers();
+          }
+        } else if (state.phase === "dwell") {
+          state.door = 1;
+          updateWalkers();
+          if (state.phaseTime >= state.dwellTime) {
+            state.requests.forEach(request => {
+              if (request.status === "entering") request.status = "onboard";
+              if (request.status === "exiting") {
+                request.status = "done";
+                request.doneUntil = state.elapsed + 6500;
+                state.completed += 1;
+              }
+            });
+            state.phase = "closing";
+            state.phaseTime = 0;
+          }
+        } else if (state.phase === "closing") {
+          state.door = 1 - smooth(state.phaseTime / CLOSE_TIME);
+          if (state.phaseTime >= CLOSE_TIME) {
+            state.door = 0;
+            state.phase = "idle";
+            state.phaseTime = 0;
+            state.target = null;
+            state.exchange = { exits: [], entries: [] };
+          }
+        } else if (state.phase === "idle") {
+          state.door = 0;
+          state.phaseTime = 0;
+          chooseNextTarget();
+          if (state.target !== null) {
+            if (Math.abs(state.target - state.position) < 0.0001) prepareStop();
+            else state.phase = "moving";
+          }
+        }
+
+        state.requests = state.requests.filter(request => request.status !== "done" || state.elapsed < request.doneUntil);
+      }
+
+      function measure() {
+        const floor = $("floor-4");
+        const buildingRect = els.building.getBoundingClientRect();
+        const shaftRect = els.shaft.getBoundingClientRect();
+        const elevatorRect = els.elevator.getBoundingClientRect();
+        geometry = {
+          floorHeight: floor.offsetHeight,
+          buildingWidth: buildingRect.width,
+          shaftLeft: shaftRect.left - buildingRect.left,
+          shaftRight: shaftRect.right - buildingRect.left,
+          shaftCenter: shaftRect.left - buildingRect.left + shaftRect.width / 2,
+          carWidth: elevatorRect.width,
+          carHeight: elevatorRect.height
+        };
+      }
+
+      function floorBaseline(floor) {
+        return (FLOOR_COUNT - floor + 1) * geometry.floorHeight - 10;
+      }
+
+      function carTop() {
+        return (FLOOR_COUNT - state.position) * geometry.floorHeight + (geometry.floorHeight - geometry.carHeight) / 2;
+      }
+
+      function makePerson(request) {
+        const node = document.createElement("div");
+        node.className = "person";
+        node.id = `person-${request.id}`;
+        node.style.setProperty("--shirt", request.color);
+        node.title = `Passenger P${request.id}: Floor ${request.from} to Floor ${request.to}`;
+        node.innerHTML = `<span class="dest-label">${request.to}${requestDirection(request) > 0 ? "↑" : "↓"}</span><span class="head"></span><span class="torso"></span><span class="leg one"></span><span class="leg two"></span>`;
+        personNodes.set(request.id, node);
+        return node;
+      }
+
+      function setPersonParent(request, node) {
+        const parent = request.status === "onboard" ? els.occupants : els.people;
+        if (node.parentNode !== parent) parent.appendChild(node);
+      }
+
+      function renderPeople() {
+        if (!geometry) return;
+        const liveIds = new Set(state.requests.map(request => request.id));
+        personNodes.forEach((node, id) => {
+          if (!liveIds.has(id)) {
+            node.remove();
+            personNodes.delete(id);
+          }
+        });
+
+        const waitingByFloor = {};
+        const doneByFloor = {};
+        state.requests.forEach(request => {
+          if (request.status === "waiting") (waitingByFloor[request.from] ||= []).push(request);
+          if (request.status === "done") (doneByFloor[request.to] ||= []).push(request);
+        });
+        Object.values(waitingByFloor).forEach(group => group.sort((a, b) => a.id - b.id));
+        Object.values(doneByFloor).forEach(group => group.sort((a, b) => a.id - b.id));
+
+        const onboard = state.requests.filter(request => request.status === "onboard").sort((a, b) => a.id - b.id);
+
+        state.requests.forEach(request => {
+          const node = personNodes.get(request.id) || makePerson(request);
+          setPersonParent(request, node);
+          node.className = `person ${request.status}`;
+          node.style.opacity = "1";
+
+          if (request.status === "onboard") {
+            const slot = onboard.indexOf(request);
+            const visibleSlot = slot % 4;
+            const row = Math.floor(slot / 4);
+            node.style.display = slot < 8 ? "block" : "none";
+            node.style.transform = `translate(${visibleSlot * 16}px, ${-row * 7}px)`;
+            node.style.left = "1px";
+            node.style.top = "auto";
+            node.style.bottom = `${row * 2}px`;
+            node.style.zIndex = String(2 + row);
+            return;
+          }
+
+          node.style.display = "block";
+          node.style.left = "0px";
+          node.style.top = "0px";
+          node.style.bottom = "auto";
+          node.style.zIndex = request.status === "waiting" ? "2" : "3";
+          let floor = request.to;
+          let x = geometry.shaftCenter - 8;
+          let y = floorBaseline(floor) - 30;
+          let bob = 0;
+
+          if (request.status === "waiting") {
+            floor = request.from;
+            const group = waitingByFloor[floor];
+            const slot = group.indexOf(request);
+            const perRow = geometry.buildingWidth < 500 ? 3 : 4;
+            const row = Math.floor(slot / perRow);
+            const column = slot % perRow;
+            x = geometry.shaftLeft - 31 - column * 22;
+            y = floorBaseline(floor) - 30 - row * 32;
+          } else if (request.status === "done") {
+            floor = request.to;
+            const group = doneByFloor[floor];
+            const slot = group.indexOf(request);
+            x = geometry.shaftRight + 18 + (slot % 4) * 19;
+            y = floorBaseline(floor) - 30 - Math.floor(slot / 4) * 31;
+            node.style.opacity = String(clamp((request.doneUntil - state.elapsed) / 1300, 0.25, 0.68));
+          } else if (request.status === "entering") {
+            floor = request.from;
+            const progress = smooth(request.walk);
+            const perRow = geometry.buildingWidth < 500 ? 3 : 4;
+            const slot = request.originSlot;
+            const startX = geometry.shaftLeft - 31 - (slot % perRow) * 22;
+            const startY = floorBaseline(floor) - 30 - Math.floor(slot / perRow) * 32;
+            const endX = geometry.shaftCenter - geometry.carWidth / 2 + 5 + (request.carSlot % 4) * 16;
+            x = lerp(startX, endX, progress);
+            y = lerp(startY, floorBaseline(floor) - 30, progress);
+            bob = request.walk > 0 && request.walk < 1 ? Math.abs(Math.sin(request.walk * Math.PI * 5)) * -2 : 0;
+          } else if (request.status === "exiting") {
+            floor = request.to;
+            const progress = smooth(request.walk);
+            const startX = geometry.shaftCenter - geometry.carWidth / 2 + 5 + (request.carSlot % 4) * 16;
+            const endX = geometry.shaftRight + 18 + (request.id % 4) * 19;
+            x = lerp(startX, endX, progress);
+            y = floorBaseline(floor) - 30;
+            bob = request.walk > 0 && request.walk < 1 ? Math.abs(Math.sin(request.walk * Math.PI * 5)) * -2 : 0;
+          }
+
+          const badge = node.querySelector(".dest-label");
+          if (badge) badge.textContent = request.status === "waiting" ? `${request.to}${requestDirection(request) > 0 ? "↑" : "↓"}` : `P${request.id} ${request.status === "entering" ? "IN" : "OUT"}`;
+          node.style.transform = `translate(${x}px, ${y + bob}px)`;
+          const legs = node.querySelectorAll(".leg");
+          const swing = (request.status === "entering" || request.status === "exiting") && request.walk > 0 && request.walk < 1 ? Math.sin(request.walk * Math.PI * 10) * 24 : 0;
+          if (legs[0]) legs[0].style.transform = `rotate(${swing}deg)`;
+          if (legs[1]) legs[1].style.transform = `rotate(${-swing}deg)`;
+        });
+      }
+
+      function renderQueue() {
+        const active = state.requests.filter(isActive).sort((a, b) => a.id - b.id);
+        const signature = active.map(request => `${request.id}:${request.status}`).join("|");
+        els.queueCount.textContent = String(active.length);
+        if (signature === lastQueueSignature) return;
+        lastQueueSignature = signature;
+        if (!active.length) {
+          els.list.innerHTML = `<div class="empty-queue">No active requests.<br>Add an arrival to call the lift.</div>`;
+          return;
+        }
+        els.list.innerHTML = active.map(request => `
+          <div class="request-row ${request.status === "entering" || request.status === "exiting" ? "active" : ""}" role="listitem" data-request-id="${request.id}">
+            <span class="request-id" style="--person-color:${request.color}">P${request.id}</span>
+            <span class="request-route">${request.from} <span aria-hidden="true">→</span> ${request.to}<small>F${request.from} to F${request.to}</small></span>
+            <span class="request-state">${STATUS_LABELS[request.status] || request.status}</span>
+          </div>`).join("");
+      }
+
+      function renderEvents() {
+        const signature = state.events.map(event => event.time + event.text).join("|");
+        if (signature === lastEventSignature) return;
+        lastEventSignature = signature;
+        els.eventLog.innerHTML = state.events.slice(0, 3).map(event => `<div class="event-line"><span class="event-time">${event.time}</span><span class="event-text">${event.text}</span></div>`).join("");
+      }
+
+      function renderStatus() {
+        const active = state.requests.filter(isActive);
+        const waiting = active.filter(request => request.status === "waiting").length;
+        const riding = active.filter(request => request.status === "onboard" || request.status === "exiting").length;
+        els.waitingStat.textContent = String(waiting);
+        els.ridingStat.textContent = String(riding);
+        els.tripsStat.textContent = String(state.completed);
+        els.modeText.textContent = state.mode;
+        els.modePill.className = `mode-pill ${state.mode}`;
+
+        els.run.disabled = state.mode !== "stopped";
+        els.stop.disabled = state.mode === "stopped";
+        els.pause.disabled = state.mode !== "running";
+        els.resume.disabled = state.mode !== "paused";
+
+        const arrow = state.direction > 0 ? "↑" : state.direction < 0 ? "↓" : "•";
+        els.carDirection.textContent = arrow;
+        els.carFloor.textContent = String(clamp(Math.round(state.position), 1, FLOOR_COUNT));
+
+        let main = "Ready to dispatch";
+        let sub = active.length ? "Press Run to serve the queued requests." : "Add a request or choose Random arrival.";
+        if (state.mode === "paused") {
+          main = `Paused · car and passengers frozen`;
+          sub = "Add several requests, then Resume the exact moment.";
+        } else if (state.mode === "stopped" && active.length) {
+          main = `${active.length} request${active.length === 1 ? "" : "s"} ${state.elapsed ? "held" : "queued"}`;
+          sub = "Run starts automatic LOOK dispatch; requests are kept.";
+        } else if (state.mode === "running") {
+          if (state.phase === "moving") {
+            main = `Sweeping ${state.direction > 0 ? "up" : "down"} · next stop F${state.target}`;
+            sub = "LOOK keeps direction while work remains ahead.";
+          } else if (state.phase === "opening") {
+            main = `Floor ${Math.round(state.position)} · doors opening`;
+            sub = "Passengers exchange once the doors are open.";
+          } else if (state.phase === "dwell") {
+            const off = state.exchange.exits.length;
+            const on = state.exchange.entries.length;
+            if (on && !off) main = `Floor ${Math.round(state.position)} · ${on === 1 ? `Boarding P${state.exchange.entries[0]}` : `${on} passengers boarding`}`;
+            else if (off && !on) main = `Floor ${Math.round(state.position)} · ${off === 1 ? `P${state.exchange.exits[0]} leaving` : `${off} passengers leaving`}`;
+            else main = `Floor ${Math.round(state.position)} · passenger exchange`;
+            sub = `${off} leaving · ${on} boarding · Doors open`;
+          } else if (state.phase === "closing") {
+            main = `Floor ${Math.round(state.position)} · doors closing`;
+            sub = "The next LOOK decision follows the stop.";
+          } else if (!active.length) {
+            main = "Watching for new requests";
+            sub = "The lift is idle; Run remains active for new arrivals.";
+          }
+        }
+        els.statusMain.textContent = main;
+        els.statusSub.textContent = sub;
+      }
+
+      function render() {
+        if (!geometry) measure();
+        const top = carTop();
+        els.elevator.style.transform = `translate(-50%, ${top}px)`;
+        els.doorLeft.style.transform = `translateX(${-state.door * 88}%)`;
+        els.doorRight.style.transform = `translateX(${state.door * 88}%)`;
+
+        for (let floor = 1; floor <= FLOOR_COUNT; floor++) {
+          $(`floor-${floor}`).classList.toggle("target", state.target === floor && state.phase === "moving");
+          $(`call-${floor}-up`).classList.toggle("active", waitingAt(floor).some(request => requestDirection(request) > 0));
+          $(`call-${floor}-down`).classList.toggle("active", waitingAt(floor).some(request => requestDirection(request) < 0));
+        }
+
+        renderPeople();
+        renderQueue();
+        renderEvents();
+        renderStatus();
+      }
+
+      function setMode(mode) {
+        state.mode = mode;
+        if (mode === "running") logEvent(state.phase === "idle" ? "Automatic dispatch started" : "Simulation clock resumed");
+        if (mode === "paused") logEvent(`Paused at F${state.position.toFixed(2)}`);
+        if (mode === "stopped") logEvent("Automatic dispatch stopped");
+        render();
+      }
+
+      els.form.addEventListener("submit", event => {
+        event.preventDefault();
+        const from = Number(els.from.value);
+        const to = Number(els.to.value);
+        if (from === to) {
+          setMessage("From and To must be different floors.", true);
+          els.to.focus();
+          return;
+        }
+        addRequest(from, to);
+      });
+
+      els.from.addEventListener("change", () => setMessage("Choose a destination, then Add Request."));
+      els.to.addEventListener("change", () => setMessage("Ready to add this hall request."));
+
+      els.random.addEventListener("click", () => {
+        const from = 1 + Math.floor(Math.random() * FLOOR_COUNT);
+        let to = 1 + Math.floor(Math.random() * (FLOOR_COUNT - 1));
+        if (to >= from) to += 1;
+        els.from.value = String(from);
+        els.to.value = String(to);
+        addRequest(from, to);
+      });
+
+      els.run.addEventListener("click", () => setMode("running"));
+      els.stop.addEventListener("click", () => setMode("stopped"));
+      els.pause.addEventListener("click", () => setMode("paused"));
+      els.resume.addEventListener("click", () => setMode("running"));
+
+      window.addEventListener("resize", () => {
+        geometry = null;
+        render();
+      });
+
+      // Deterministic hooks for browser verification; the production UI uses the same clock.
+      window.__stepOnce = ms => {
+        let remaining = clamp(Number(ms) || 0, 0, 180000);
+        while (remaining > 0) {
+          const slice = Math.min(16, remaining);
+          if (state.mode === "running") step(slice);
+          remaining -= slice;
+        }
+        render();
+        return window.__dbg.snapshot();
+      };
+
+      window.__dbg = {
+        get state() { return state; },
+        addRequest,
+        snapshot() {
+          return {
+            mode: state.mode,
+            position: state.position,
+            direction: state.direction,
+            target: state.target,
+            phase: state.phase,
+            phaseTime: state.phaseTime,
+            door: state.door,
+            elapsed: state.elapsed,
+            completed: state.completed,
+            requests: state.requests.map(request => ({ id: request.id, from: request.from, to: request.to, status: request.status, walk: request.walk })),
+            events: state.events.map(event => ({ ...event }))
+          };
+        }
+      };
+
+      addRequest(1, 4, { silent: true });
+      addRequest(2, 4, { silent: true });
+      addRequest(4, 1, { silent: true });
+      logEvent("3 sample arrivals queued");
+      measure();
+      render();
+
+      let lastTick = performance.now();
+      setInterval(() => {
+        const now = performance.now();
+        const dt = Math.min(64, Math.max(0, now - lastTick));
+        lastTick = now;
+        if (state.mode === "running") step(dt);
+        render();
+      }, 16);
+    })();
+  </script>
+</body>
+</html>
